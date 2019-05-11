@@ -63,25 +63,70 @@ headers = {
 为探寻获取用户详细信息和关注列表的接口，回到网页并检查网页，打开控制台切换到Network模式。
 
 
-通过一个大V作为开头，其个人信息页面地址如下：
+选取一个知乎大V作为爬取开头，如：
 > https://www.zhihu.com/people/excited-vczh
 
-通过观察个人信息页面，确定需要爬取得基本信息，如：姓名，签名，职业，关注数，赞同数等。
+通过观察个人信息页面，确定需要爬取的基本信息，如：姓名，签名，职业，关注数，赞同数等。
+> 注：Ajax，即Asynchronous JavaScript and XML，指异步的JavaScript和XML，指利用JavaScript在保证页面不被刷新、页面链接不改变的情况下与服务器交换数据并更新部分网页的技术。
 
-点击页面内选项卡中的关注，再翻页，可在控制台中发现出现了相应得Ajax请求。这个就是获取关注列表的接口。其形式如：
+点击页面内选项卡中的关注，再翻页，可在控制台中发现出现了相应的Ajax请求。这个就是获取关注列表的接口。其形式如：
 > followees?include=data...
 
-观察其请求结构，请求方法为GET，URL为https://www.zhihu.com/api/v4/members/excited-vczh/followees?...，后跟了三个参数，分别为include，offset，limit。
+观察其请求结构（headers），请求方法为GET，URL为https://www.zhihu.com/api/v4/members/excited-vczh/followees?...，后跟了三个参数，分别为include，offset，limit。可以发现，offset为偏移量，limit表示每页数量，结合这两项即可表示当前的页数。include中则是查询参数。
 
-可以发现，offset为偏移量，limit表示每页数量，结合这两项即可表示当前的页数。include中则是查询参数。
-### 生成第一步请求一些
+接下来查看返回结果（Preview），包括有data和paging两个字段。data中包含了关注列表的用户信息，每页有20个内容。paging内容中的字段则可用于请求下一页，其中is_end表示当前翻页是否结束，next则是下一页的链接。
 
-### O Auth
+由上，我们即可通过接口获取到获取关注列表了。
 
-### parse_user
+若将鼠标放在关注列表中的任意一个头像上，则又会出现新的Ajax请求。可以通过Network控制台中看到该次请求的链接为：
+> https://www.zhihu.com/api/v4/members/...
 
-### prase_follows
+后面同样跟了一个include参数，其包含了一些查询参数。在该请求的返回结果（Preview）中几乎可以获得所有详情。因此我们可以通过该接口获取关注列表中的用户的详细信息。
 
-### followers
+总结：
+- 通过请求 https://www.zhihu.com/api/v4/members/{user}/followees?include={include}&offset={offset}&limit={limit} 这样的接口以获取用户的关注列表，其中user为该用户的url_token。
+- 通过请求 https://www.zhihu.com/api/v4/members/{user}?include={include} 这样的接口获取用户的详细信息，其中user同样为该用户的url_token。
+
+有了上两条爬取逻辑后，即可开始构造请求。
+
+### 构造请求
+##### 1.生成第一步请求
+第一步即为请求起始用户（excited-vczh）的基本信息，然后再获取其关注列表。首先在之前创建的spider中删除原本的start_urls，新构造一个格式化的url，将其中一些可变参数提取出来，然后重写start_requsets方法，以生成第一步的请求。
+
+同时，还需要实现两个解析方法parse_user和parse_follow。修改后代码如下：
+```python
+import scrapy
+
+
+class ZhihuSpider(scrapy.Spider):
+    name = 'zhihu'
+    allowed_domains = ['www.zhihu.com']
+    user_url = 'https://www.zhihu.com/api/v4/members/{user}?include={include}'
+    follows_url = 'https://www.zhihu.com/api/v4/members/{user}/followees?include={include}&amp;offset={offset}&amp;limit={limit}'
+    
+    start_user = 'exicted-vczh'
+    user_query = 'locations,employments,gender,educations,business,voteup_count,thanked_Count,follower_count,following_count,cover_url,following_topic_count,following_question_count,following_favlists_count,following_columns_count,answer_count,articles_count,pins_count,question_count,commercial_question_count,favorite_count,favorited_count,logs_count,marked_answers_count,marked_answers_text,message_thread_token,account_status,is_active,is_force_renamed,is_bind_sina,sina_weibo_url,sina_weibo_name,show_sina_weibo,is_blocking,is_blocked,is_following,is_followed,mutual_followees_count,vote_to_count,vote_from_count,thank_to_count,thank_from_count,thanked_count,description,hosted_live_count,participated_live_count,allow_message,industry_category,org_name,org_homepage,badge[?(type=best_answerer)].topics'
+    follows_query = 'data[*].answer_count,articles_count,gender,follower_count,is_followed,is_following,badge[?(type=best_answerer)].topics'
+
+    def start_requests(self):
+        yield scrapy.Request(self.user_url.format(user=self.start_user, include=self.user_query), self.parse_user)
+        yield scrapy.Request(self.follows_url.format(user=self.start_user, include=self.follows_query, limit=20, offset=0), self.parse_follows)
+
+    def parse_user(self, response):
+        print(response.text)
+    
+    def parse_follows(self, response):
+        print(response.text)
+
+```
+修改完后即可通过在命令行运行下属命令运行，并观察结果：
+> scrapy crawl zhihu
+##### 2.解决O Auth问题
+
+##### 3.parse_user
+
+##### 4.prase_follows
+
+##### 5.prase_followers
 
 ### 小结
