@@ -97,33 +97,38 @@ headers = {
 ```python
 import scrapy
 
-
 class ZhihuSpider(scrapy.Spider):
     name = 'zhihu'
     allowed_domains = ['www.zhihu.com']
+    # 查询用户信息的url地址
     user_url = 'https://www.zhihu.com/api/v4/members/{user}?include={include}'
+    user_query = 'allow_message,is_followed,is_following,is_org,is_blocking,employments,answer_count,follower_count,articles_count,gender,badge[?(type=best_answerer)].topics'
+    # 查询关注列表的url地址
     follows_url = 'https://www.zhihu.com/api/v4/members/{user}/followees?include={include}&amp;offset={offset}&amp;limit={limit}'
-    
-    start_user = 'exicted-vczh'
-    user_query = 'locations,employments,gender,educations,business,voteup_count,thanked_Count,follower_count,following_count,cover_url,following_topic_count,following_question_count,following_favlists_count,following_columns_count,answer_count,articles_count,pins_count,question_count,commercial_question_count,favorite_count,favorited_count,logs_count,marked_answers_count,marked_answers_text,message_thread_token,account_status,is_active,is_force_renamed,is_bind_sina,sina_weibo_url,sina_weibo_name,show_sina_weibo,is_blocking,is_blocked,is_following,is_followed,mutual_followees_count,vote_to_count,vote_from_count,thank_to_count,thank_from_count,thanked_count,description,hosted_live_count,participated_live_count,allow_message,industry_category,org_name,org_homepage,badge[?(type=best_answerer)].topics'
     follows_query = 'data[*].answer_count,articles_count,gender,follower_count,is_followed,is_following,badge[?(type=best_answerer)].topics'
-
+    # 起始用户
+    start_user = 'excited-vczh'
+ 
     def start_requests(self):
-        yield scrapy.Request(self.user_url.format(user=self.start_user, include=self.user_query), self.parse_user)
-        yield scrapy.Request(self.follows_url.format(user=self.start_user, include=self.follows_query, limit=20, offset=0), self.parse_follows)
+        yield scrapy.Request(self.user_url.format(user=self.start_user, include=self.user_query), callback=self.parse_user)
+        yield scrapy.Request(self.follows_url.format(user=self.start_user, include=self.follows_query, limit=20, offset=0), callback=self.parse_follows)
 
     def parse_user(self, response):
         print(response.text)
     
     def parse_follows(self, response):
         print(response.text)
-
 ```
+>注：在url中&amp;用于转义，表示&
+
 修改完后即可通过在命令行运行下属命令运行，并观察结果：
 > scrapy crawl zhihu
+
+成功爬取得到结果。
 ##### 2.解决O Auth问题
 
 ##### 3.parse_user
+接下来处理爬取得到的用户基本信息，通过查看接口信息所返回的数据，在items中新声明一个UserItem：
 
 ##### 4.prase_follows
 
