@@ -72,7 +72,7 @@ headers = {
 点击页面内选项卡中的关注，再翻页，可在控制台中发现出现了相应的Ajax请求。这个就是获取关注列表的接口。其形式如：
 > followees?include=data...
 
-观察其请求结构（headers），请求方法为GET，URL为https://www.zhihu.com/api/v4/members/excited-vczh/followees?...，后跟了三个参数，分别为include，offset，limit。可以发现，offset为偏移量，limit表示每页数量，结合这两项即可表示当前的页数。include中则是查询参数。
+观察其请求结构（headers），请求方法为GET，URL为https://www.zhihu.com/api/v4/members/excited-vczh/followees?... ，后跟了三个参数，分别为include，offset，limit。可以发现，offset为偏移量，limit表示每页数量，结合这两项即可表示当前的页数。include中则是查询参数。
 
 接下来查看返回结果（Preview），包括有data和paging两个字段。data中包含了关注列表的用户信息，每页有20个内容。paging内容中的字段则可用于请求下一页，其中is_end表示当前翻页是否结束，next则是下一页的链接。
 
@@ -119,7 +119,7 @@ class ZhihuSpider(scrapy.Spider):
     def parse_follows(self, response):
         print(response.text)
 ```
->注：在url中&amp;用于转义，表示&
+>注：在url中'&amp;'用于转义，表示&
 
 修改完后即可通过在命令行运行下属命令运行，并观察结果：
 > scrapy crawl zhihu
