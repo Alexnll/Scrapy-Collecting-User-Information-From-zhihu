@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+from zhihu_user.items import UserItem
+import json
 import scrapy
 
 class ZhihuSpider(scrapy.Spider):
@@ -18,7 +20,23 @@ class ZhihuSpider(scrapy.Spider):
         yield scrapy.Request(self.follows_url.format(user=self.start_user, include=self.follows_query, limit=20, offset=0), callback=self.parse_follows)
 
     def parse_user(self, response):
-        print(response.text)
+        result = json.loads(response.text)
+        item = UserItem()
+
+        for field in item.fields:
+            if field in result.keys():
+                item[field] = result.get(field)
+                yield item
+                yield scrapy.Request(self.follows_url.format(user=result.get('url_token'), include=self.follows_query, limit=20, offset=0), self.parse_follows) 
     
     def parse_follows(self, response):
-        print(response.text)
+        results = json.loads(response.text)
+        # 对用户关注列表的接析，json数据中有两个字段，分别为data和page，其中page是分页信息
+        if 'data' in results.keys():
+            for result in results.get('data'):
+                yield scrapy.Request(self.user_url.format(user=result.get('url_token'), include=self.user_query), self.parse_user)
+        ## 判断page是否存在切is_end是否为false，即判断是否最后一页
+        if 'paging' in results.keys() and results.get('paging').get('is_end') == False:
+            next_page = results.get('paging').get('next')
+            ## 获取下一页地址并返回request
+            yield scrapy.Request(next_page, self.parse_follows)

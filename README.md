@@ -119,19 +119,80 @@ class ZhihuSpider(scrapy.Spider):
     def parse_follows(self, response):
         print(response.text)
 ```
->注：在url中'&amp;'用于转义，表示&
+>注：在url中\&amp;用于转义，表示&
 
 修改完后即可通过在命令行运行下属命令运行，并观察结果：
 > scrapy crawl zhihu
 
 成功爬取得到结果。
-##### 2.解决O Auth问题
+##### 2.编写parse_user
+接下来处理爬取得到的用户基本信息，通过查看接口信息所返回的数据，在items.py中新声明一个UserItem：
+```python
+import scrapy
+class UserItem(scrapy.Item):
+    id = scrapy.Field()
+    name = scrapy.fleid()
+    type = scrapy.Field()
+    gender = scrapy.Field()
+    answer_count = scrapy.Field()
+    articles_count = scrapy.Field()
+    follower_count = scrapy.Field()
+    is_vip = scrapy.Field()
+    headline = scrapy.Field()
+    url_token = scrapy.Field()
+    url = scrapy.Field()
+    ...   
+```
 
-##### 3.parse_user
-接下来处理爬取得到的用户基本信息，通过查看接口信息所返回的数据，在items中新声明一个UserItem：
+以爬取需要的信息。接下来在spider.py的解析方法里接析我们得到的response，然后转为json对象，依次判断字段是否存在，若存在则赋值：
+```python
+def parse_user(self, response):
+    result = json.loads(response.text)
+    item = UserItem()
+    for field in item.fields:
+        if field in result.keys():
+            item[field] = result.get(field)
+            yield item
+```
 
-##### 4.prase_follows
+得到item后通过yield即可饭回。这样保存用户基本信息的步骤就完成了。接下来还需要获取该用户的关注列表，因此需要再发起一个获取关注列表的request。在parse_user后面在添加：
+```python
+yield scrapy.Request(
+    self.follows_url.format(user=result.get('url_token'), 
+    include=self.follows_query, limit=20, offset=0), 
+    self.parse_follows)
+```
 
-##### 5.prase_followers
+这样就又生成了获取该用户关注列表的请求。
+##### 3. 编写prase_follows
+同样的步骤处理关注列表。先解析response的文本，然后做两件事：
+- 通过关注列表的每一个用户，对每一个用户发起请求，获取其详细信息
+- 处理分页，判断paging内容，获取下一页的关注列表
+改写parse_follows如下：
+```python
+def parse_follows(self, response):
+    results = json.loads(response.text)
+    # 对用户关注列表的接析，json数据中有两个字段，分别为data和page，其中page是分页信息
+    if 'data' in results.keys():
+        for result in results.get('data'):
+            yield scrapy.Request(self.user_url.format(user=result.get('url_token'), include=self.user_query), self.parse_user)
+    ## 判断page是否存在切is_end是否为false，即判断是否最后一页
+    if 'paging' in results.keys() and results.get('paging').get('is_end') == False:
+        next_page = results.get('paging').get('next')
+        ## 获取下一页地址并返回request
+         yield scrapy.Request(next_page, self.parse_follows)
+```
+运行爬虫，成功爬取信息。
+##### 4. 编写prase_followers
 
 ### 小结
+
+
+### 额外信息
+##### 配置爬虫关闭的条件
+
+### reference:
+> https://zhuanlan.zhihu.com/p/26378388
+> https://www.cnblogs.com/111testing/p/10325425.html
+> https://www.cnblogs.com/felixwang2/p/8807233.html
+> https://blog.csdn.net/qq_41020281/article/details/83315752
