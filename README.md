@@ -152,7 +152,7 @@ def parse_user(self, response):
     for field in item.fields:
         if field in result.keys():
             item[field] = result.get(field)
-            yield item
+    yield item
 ```
 
 得到item后通过yield即可饭回。这样保存用户基本信息的步骤就完成了。接下来还需要获取该用户的关注列表，因此需要再发起一个获取关注列表的request。在parse_user后面在添加：
@@ -184,15 +184,105 @@ def parse_follows(self, response):
 ```
 运行爬虫，成功爬取信息。
 ##### 4. 编写prase_followers
+通过获取关系列表实现循环递归爬取后，可以同样的方式获取用户的粉丝列表。经过分析后发现粉丝列表的api也类似，除了将followee换成follower外其他完全相同，所以我们也可通过同样的逻辑添加followers相关信息。
 
+需要改动的位置有：
+- 在zhihu.py中添加followers_url和followers_query
+- 在start_requests中添加yield followers信息
+- 在parse_user中添加yield followers信息
+- 编写parse_followers
+
+如此一来，该spider便完成了，我们便可通过其实现知乎社交网络的递归爬取。
+完整的zhihu.py代码如下：
+```python
+# -*- coding: utf-8 -*-
+from zhihu_user.items import UserItem
+import json
+import scrapy
+
+class ZhihuSpider(scrapy.Spider):
+    name = 'zhihu'
+    allowed_domains = ['www.zhihu.com']
+    # 查询用户信息的url地址
+    user_url = 'https://www.zhihu.com/api/v4/members/{user}?include={include}'
+    user_query = 'allow_message,is_followed,is_following,is_org,is_blocking,employments,answer_count,follower_count,articles_count,gender,badge[?(type=best_answerer)].topics'
+    # 查询关注列表的url地址
+    follows_url = 'https://www.zhihu.com/api/v4/members/{user}/followees?include={include}&amp;offset={offset}&amp;limit={limit}'
+    follows_query = 'data[*].answer_count,articles_count,gender,follower_count,is_followed,is_following,badge[?(type=best_answerer)].topics'
+    # 查询粉丝列表的url地址
+    followers_url = 'https://www.zhihu.com/api/v4/members/{iser}/followers?include={include}&amp;offset={offset}&amp;limit={limit}'
+    followers_query = 'data[*].answer_count,articles_count,gender,follower_count,is_followed,is_following,badge[?(type=best_answerer)].topics' 
+    # 起始用户
+    start_user = 'excited-vczh'
+ 
+    def start_requests(self):
+        yield scrapy.Request(self.user_url.format(user=self.start_user, include=self.user_query), callback=self.parse_user)
+        yield scrapy.Request(self.follows_url.format(user=self.start_user, include=self.follows_query, limit=20, offset=0), callback=self.parse_follows)
+        yield scrapy.Request(self.followers_url.format(user=self.start_user, include=self.followers_query, limit=20, offset=0), callback=self.parse_followers)
+
+    def parse_user(self, response):
+        result = json.loads(response.text)
+        item = UserItem()
+
+        for field in item.fields:
+            if field in result.keys():
+                item[field] = result.get(field)
+        yield item
+        yield scrapy.Request(self.follows_url.format(user=result.get('url_token'), include=self.follows_query, limit=20, offset=0), self.parse_follows) 
+        yield scrapy.Request(self.followers_url.format(user=result.get('url_token'), include=self.followers_query, limit=20, offset=9), self.parse_followers)
+
+    def parse_follows(self, response):
+        results = json.loads(response.text)
+        # 对用户关注列表的接析，json数据中有两个字段，分别为data和page，其中page是分页信息
+        if 'data' in results.keys():
+            for result in results.get('data'):
+                yield scrapy.Request(self.user_url.format(user=result.get('url_token'), include=self.user_query), self.parse_user)
+        ## 判断page是否存在切is_end是否为false，即判断是否最后一页
+        if 'paging' in results.keys() and results.get('paging').get('is_end') == False:
+            next_page = results.get('paging').get('next')
+            ## 获取下一页地址并返回request
+            yield scrapy.Request(next_page, self.parse_follows)
+    
+    # 编写逻辑同parse_follows
+    def parse_followers(self, response):
+        results = json.loads(response.text)
+        if 'data' in results.keys():
+            for result in  results.get('data'):
+                yield scrapy.Request(self.user_irl.format(user=reslt.get('url_token'), include=self.user.query), self.parse_user)
+        if 'paging' in results.keys() and results.get('paging').get('is_end') == False:
+            next_page = results.get('paging').get('next')
+            yield scrapy.Request(next_page, self.parse_followers)
+```
+在anaconda虚拟环境命令行中运行：
+> scrapy crawl zhihu -o zhihu.csv
+
+可将爬取得到的内容保存成csv格式。json，xml，pickle，marshal亦同。
 ### 小结
 
 
 ### 额外信息
 ##### 配置爬虫关闭的条件
+在scrapy的默认配置文件中存在四个配置：
+```python
+CLOSESPIDER_TIMEOUT = 0
+CLOSESPIDER_PAGECOUNT = 0
+CLOSESPIDER_ITEMCOUNT = 0
+CLOSESPIDER_ERRORCOUNT = 0
+```
+该四个配置用于配置爬虫的自动关闭条件，等于0代表不开启。其中：
+- CLOSESPIDER_TIMEOUT表示指定爬虫运行的秒数
+- CLOSESPIDER_ITEMCOUNT表示爬虫爬取的条目数
+- CLOSESPIDER_PAGECOUNT表示爬虫爬取的响应数
+- CLOSESPIDER_ERRORCOUNT表示爬虫爬取可以接受的最大错误数
+  当这四个值不为0时，spider的过程中的任意一项参数超过配置数后，爬虫便会被自动关闭。运行时在命令行中设置：
+>scrapy crawl fast -s CLOSESPIDER_ITEMCOUNT=10
+>scrapy crawl fast -s CLOSESPIDER_PAGECOUNT=10
+>scrapy crawl fast -s CLOSESPIDER_TIMEOUT=10
+scrapy crawl fast -s CLOSESPIDER_ERRORCOUNT=10
 
 ### reference:
 > https://zhuanlan.zhihu.com/p/26378388
 > https://www.cnblogs.com/111testing/p/10325425.html
 > https://www.cnblogs.com/felixwang2/p/8807233.html
 > https://blog.csdn.net/qq_41020281/article/details/83315752
+> https://blog.csdn.net/Q_AN1314/article/details/51104701
