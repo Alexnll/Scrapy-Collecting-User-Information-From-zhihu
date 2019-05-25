@@ -248,7 +248,7 @@ class ZhihuSpider(scrapy.Spider):
         results = json.loads(response.text)
         if 'data' in results.keys():
             for result in  results.get('data'):
-                yield scrapy.Request(self.user_irl.format(user=reslt.get('url_token'), include=self.user.query), self.parse_user)
+                yield scrapy.Request(self.user_irl.format(user=result.get('url_token'), include=self.user.query), self.parse_user)
         if 'paging' in results.keys() and results.get('paging').get('is_end') == False:
             next_page = results.get('paging').get('next')
             yield scrapy.Request(next_page, self.parse_followers)
@@ -258,7 +258,18 @@ class ZhihuSpider(scrapy.Spider):
 
 可将爬取得到的内容保存成csv格式。json，xml，pickle，marshal亦同。
 ### 小结
+在本次对知乎用户信息的爬取中，通过分析知乎用户的页面结构，对zhihu.py, item.py进行编写并实现了以下逻辑：
+- start_requests，通过从一个知乎大V用户，开始整个爬取过程
+- parse_user，实现了对用户详细信息和其关注与粉丝列表的获取
+- parse_follows，实现了通过关注列表重新请求用户并翻页的功能
+- parse_followers，实现了通过粉丝列表重新请求用户并翻页的功能
 
+后续可进行的改进：
+- 连接MongoDB数据库并储存爬取得到的数据
+- 通过Redis实现分布式爬虫
+- 数据清洗
+- Cookies池对接
+- 代理池对接
 
 ### 额外信息
 ##### 配置爬虫关闭的条件
