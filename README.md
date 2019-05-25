@@ -276,17 +276,17 @@ CLOSESPIDER_ERRORCOUNT = 0
 - CLOSESPIDER_ERRORCOUNT表示爬虫爬取可以接受的最大错误数
 
 当这四个值不为0时，spider的过程中的任意一项参数超过配置数后，爬虫便会被自动关闭。运行时在命令行中设置：
-> scrapy crawl fast -s CLOSESPIDER_ITEMCOUNT=10
+> scrapy crawl zhihu -s CLOSESPIDER_ITEMCOUNT=10
 
-> scrapy crawl fast -s CLOSESPIDER_PAGECOUNT=10
+> scrapy crawl zhihu -s CLOSESPIDER_PAGECOUNT=10
 
-> scrapy crawl fast -s CLOSESPIDER_TIMEOUT=10
+> scrapy crawl zhihu -s CLOSESPIDER_TIMEOUT=10
 
-> scrapy crawl fast -s CLOSESPIDER_ERRORCOUNT=10
+> scrapy crawl zhihu -s CLOSESPIDER_ERRORCOUNT=10
 
 ### reference:
-> https://zhuanlan.zhihu.com/p/26378388
-> https://www.cnblogs.com/111testing/p/10325425.html
-> https://www.cnblogs.com/felixwang2/p/8807233.html
-> https://blog.csdn.net/qq_41020281/article/details/83315752
-> https://blog.csdn.net/Q_AN1314/article/details/51104701
+> 1. https://zhuanlan.zhihu.com/p/26378388
+> 2. https://www.cnblogs.com/111testing/p/10325425.html
+> 3. https://www.cnblogs.com/felixwang2/p/8807233.html
+> 4. https://blog.csdn.net/qq_41020281/article/details/83315752
+> 5. https://blog.csdn.net/Q_AN1314/article/details/51104701
