@@ -274,11 +274,15 @@ CLOSESPIDER_ERRORCOUNT = 0
 - CLOSESPIDER_ITEMCOUNT表示爬虫爬取的条目数
 - CLOSESPIDER_PAGECOUNT表示爬虫爬取的响应数
 - CLOSESPIDER_ERRORCOUNT表示爬虫爬取可以接受的最大错误数
-  当这四个值不为0时，spider的过程中的任意一项参数超过配置数后，爬虫便会被自动关闭。运行时在命令行中设置：
->scrapy crawl fast -s CLOSESPIDER_ITEMCOUNT=10
->scrapy crawl fast -s CLOSESPIDER_PAGECOUNT=10
->scrapy crawl fast -s CLOSESPIDER_TIMEOUT=10
-scrapy crawl fast -s CLOSESPIDER_ERRORCOUNT=10
+
+当这四个值不为0时，spider的过程中的任意一项参数超过配置数后，爬虫便会被自动关闭。运行时在命令行中设置：
+> scrapy crawl fast -s CLOSESPIDER_ITEMCOUNT=10
+
+> scrapy crawl fast -s CLOSESPIDER_PAGECOUNT=10
+
+> scrapy crawl fast -s CLOSESPIDER_TIMEOUT=10
+
+> scrapy crawl fast -s CLOSESPIDER_ERRORCOUNT=10
 
 ### reference:
 > https://zhuanlan.zhihu.com/p/26378388
